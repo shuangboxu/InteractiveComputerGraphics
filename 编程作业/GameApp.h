@@ -2,8 +2,8 @@
 #define GAMEAPP_H
 
 #include "d3dApp.h"
-#include <array>        // ==== 许双博改的 ====
-#include <vector>       // ==== 许双博改的 ====
+#include <array>        
+#include <vector>       
 // ==== 许双博第三次作业修改：飞行相机需要用到窗口结构和鼠标宏 ====
 #include <Windows.h>
 #include <windowsx.h>
@@ -41,7 +41,7 @@ public:
 private:
     bool InitEffect();
     bool InitResource();
-    void UpdateCameraForCube();   // ==== 许双博改的 ====
+    void UpdateCameraForCube();   
     // ==== 许双博第三次作业修改：飞行相机辅助函数 ====
     void UpdateFlightCamera(float dt);
     void UpdateViewMatrix();
@@ -49,7 +49,7 @@ private:
 
 private:
     ComPtr<ID3D11InputLayout>   m_pVertexLayout;
-    // ==== 许双博改的：改成 4 组 VB/IB（四个字各一份） ====
+    // ==== 改成 4 组 VB/IB（四个字各一份） ====
     std::array<ComPtr<ID3D11Buffer>, 4> m_pVertexBuffers;
     std::array<ComPtr<ID3D11Buffer>, 4> m_pIndexBuffers;
     std::array<UINT, 4>                 m_IndexCounts;
@@ -60,19 +60,19 @@ private:
     ComPtr<ID3D11PixelShader>   m_pPixelShader;
     ConstantBuffer              m_CBuffer;
 
-    // ==== 许双博改的：4 个模型对象缓存 ====
+    // ==== 4 个模型对象缓存 ====
     std::array<NameVertices*, 4> m_Models = { nullptr, nullptr, nullptr, nullptr };
 
     float   angle = 0.0f;
 
     // 立方体阵列控制
-    int     m_N = 2;              // ==== 许双博改的 ====
-    float   m_Spacing = 4.5f;     // ==== 许双博改的 ====
-    float   m_OrbitRadius = 2.5f; // ==== 许双博改的 ====
-    int     m_OrbitMin = 1;       // ==== 许双博改的 ====
-    int     m_OrbitMax = 3;       // ==== 许双博改的 ====
+    int     m_N = 2;             
+    float   m_Spacing = 4.5f;     
+    float   m_OrbitRadius = 2.5f; 
+    int     m_OrbitMin = 1;       
+    int     m_OrbitMax = 3;       
     bool    m_AutoFitCamera = false; // ==== 许双博第三次作业修改：默认启用飞行相机 ====
-    float   m_KeyCooldown = 0.0f;   // ==== 许双博改的 ====
+    float   m_KeyCooldown = 0.0f;   
 
     // ==== 许双博第三次作业修改：飞行相机状态 ====
     DirectX::XMFLOAT3 m_CameraPos = DirectX::XMFLOAT3(0.0f, 20.0f, -80.0f);

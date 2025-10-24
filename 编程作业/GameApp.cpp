@@ -27,7 +27,7 @@ GameApp::GameApp(HINSTANCE hInstance)
 
 GameApp::~GameApp()
 {
-    // ==== 许双博改的：释放4个模型 ====
+    // 释放4个模型 
     for (auto& m : m_Models) { delete m; m = nullptr; }
 }
 
@@ -44,7 +44,7 @@ void GameApp::OnResize()
     D3DApp::OnResize();
     if (m_AutoFitCamera)
     {
-        UpdateCameraForCube();   // ==== 许双博改的 ====
+        UpdateCameraForCube();   
     }
     else
     {
@@ -86,7 +86,7 @@ void GameApp::UpdateScene(float dt)
     else UpdateFlightCamera(dt);   // ==== 许双博第三次作业修改：更新飞行相机 ====
 }
 
-// ==== 许双博改的：小哈希，稳定随机选择 0..3 ====
+// 小哈希，稳定随机选择 
 static inline int PickId(int x, int y, int z, int extra = 0)
 {
     // 常用哈希技巧：互质大数混合，最后取低两位
@@ -114,7 +114,7 @@ void GameApp::DrawScene()
         for (int iy = 0; iy < m_N; ++iy)
             for (int iz = 0; iz < m_N; ++iz)
             {
-                // ==== 许双博改的：稳定随机选择一个主字 id ====
+                // 稳定随机选择一个主字 id 
                 int id = PickId(ix, iy, iz);
 
                 // 绑定该 id 的 VB/IB
@@ -194,7 +194,7 @@ bool GameApp::InitEffect()
 
 bool GameApp::InitResource()
 {
-    // ==== 许双博改的：预创建四个模型并为每个建立独立 VB/IB ====
+
     for (int i = 0; i < 4; ++i)
     {
         m_Models[i] = new NameVertices(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST, i);
@@ -267,7 +267,6 @@ void GameApp::UpdateCameraForCube()
     float halfExtent = (m_N - 1) * m_Spacing * 0.5f;
     float radius = std::max<float>(halfExtent * 1.732051f + 8.0f, 12.0f);
 
-    // 你之前调近的参数
     XMFLOAT3 camPos(0.0f, radius * 0.45f, -radius * 1.3f);
 
     XMMATRIX view = XMMatrixLookAtLH(
