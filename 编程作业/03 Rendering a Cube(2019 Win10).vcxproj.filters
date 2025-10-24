@@ -42,6 +42,9 @@
     <ClCompile Include="NameVertices.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="YouModelData.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="d3dApp.h">
@@ -60,6 +63,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="NameVertices.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="YouModelData.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
