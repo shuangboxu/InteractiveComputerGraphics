@@ -41,13 +41,20 @@ public:
 private:
     bool InitEffect();
     bool InitResource();
-    void UpdateCameraForCube();   
     // ==== 许双博第三次作业修改：飞行相机辅助函数 ====
     void UpdateFlightCamera(float dt);
+    void UpdatePlayerCamera(float dt);
     void UpdateViewMatrix();
     void UpdateProjectionMatrix();
 
 private:
+    enum class CameraMode
+    {
+        FreeFlight,
+        FirstPerson,
+        ThirdPerson
+    };
+
     ComPtr<ID3D11InputLayout>   m_pVertexLayout;
     // ==== 改成 4 组 VB/IB（四个字各一份） ====
     std::array<ComPtr<ID3D11Buffer>, 4> m_pVertexBuffers;
@@ -71,8 +78,8 @@ private:
     float   m_OrbitRadius = 2.5f; 
     int     m_OrbitMin = 1;       
     int     m_OrbitMax = 3;       
-    bool    m_AutoFitCamera = false; // ==== 许双博第三次作业修改：默认启用飞行相机 ====
-    float   m_KeyCooldown = 0.0f;   
+    CameraMode m_CameraMode = CameraMode::FreeFlight;
+    float   m_KeyCooldown = 0.0f;
 
     // ==== 许双博第三次作业修改：飞行相机状态 ====
     DirectX::XMFLOAT3 m_CameraPos = DirectX::XMFLOAT3(0.0f, 20.0f, -80.0f);
@@ -86,6 +93,20 @@ private:
     float   m_MouseDeltaY = 0.0f;
     POINT   m_LastMousePos = { 0, 0 };
     bool    m_FirstMouseEvent = true;
-};
+
+    // 玩家（“你”）模型状态
+    DirectX::XMFLOAT3 m_PlayerPos = DirectX::XMFLOAT3(0.0f, 0.0f, -60.0f);
+    float   m_PlayerYaw = 0.0f;
+    float   m_PlayerPitch = 0.0f;
+    float   m_PlayerMoveSpeed = 22.0f;
+    float   m_PlayerEyeHeight = 8.0f;
+    float   m_PlayerScale = 1.0f;
+    float   m_ThirdPersonDistance = 25.0f;
+    float   m_ThirdPersonHeight = 8.0f;
+
+    ComPtr<ID3D11Buffer> m_pPlayerVertexBuffer;
+    ComPtr<ID3D11Buffer> m_pPlayerIndexBuffer;
+    UINT    m_PlayerIndexCount = 0;
+}; 
 
 #endif
