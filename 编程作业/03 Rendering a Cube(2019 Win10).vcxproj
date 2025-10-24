@@ -141,6 +141,7 @@
     <ClCompile Include="GameTimer.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="NameVertices.cpp" />
+    <ClCompile Include="YouModelData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="d3dApp.h" />
@@ -149,6 +150,7 @@
     <ClInclude Include="GameApp.h" />
     <ClInclude Include="GameTimer.h" />
     <ClInclude Include="NameVertices.h" />
+    <ClInclude Include="YouModelData.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="HLSL\Cube.hlsli">

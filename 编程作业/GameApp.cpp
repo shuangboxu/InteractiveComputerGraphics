@@ -2,6 +2,7 @@
 #include "d3dUtil.h"
 #include "DXTrace.h"
 #include "NameVertices.h"
+#include "YouModelData.h" // 小组成员修改
 
 #include <cmath>
 #include <algorithm>
@@ -13,25 +14,25 @@
 #undef min
 #endif
 
-using namespace DirectX;
+using namespace DirectX; // 小组成员修改
 
-const D3D11_INPUT_ELEMENT_DESC GameApp::VertexPosColor::inputLayout[2] = {
+const D3D11_INPUT_ELEMENT_DESC GameApp::VertexPosColor::inputLayout[2] = { // 小组成员修改
     { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
     { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 };
 
 GameApp::GameApp(HINSTANCE hInstance)
-    : D3DApp(hInstance), m_CBuffer()
+    : D3DApp(hInstance), m_CBuffer() // 小组成员修改
 {
 }
 
-GameApp::~GameApp()
+GameApp::~GameApp() // 小组成员修改
 {
     // 释放4个模型 
     for (auto& m : m_Models) { delete m; m = nullptr; }
 }
 
-bool GameApp::Init()
+bool GameApp::Init() // 小组成员修改
 {
     if (!D3DApp::Init())       return false;
     if (!InitEffect())         return false;
@@ -39,35 +40,76 @@ bool GameApp::Init()
     return true;
 }
 
-void GameApp::OnResize()
+void GameApp::OnResize() // 小组成员修改
 {
     D3DApp::OnResize();
-    if (m_AutoFitCamera)
-    {
-        UpdateCameraForCube();   
-    }
-    else
-    {
-        UpdateProjectionMatrix();   // ==== 许双博第三次作业修改：保持飞行相机的投影矩阵 ====
-        UpdateViewMatrix();         // ==== 许双博第三次作业修改：立即刷新视图矩阵 ====
-    }
+    UpdateProjectionMatrix();   // ==== 许双博第三次作业修改：保持飞行相机的投影矩阵 ====
+    UpdateViewMatrix();         // ==== 许双博第三次作业修改：立即刷新视图矩阵 ====
 }
 
-void GameApp::UpdateScene(float dt)
+void GameApp::UpdateScene(float dt) // 小组成员修改
 {
     if (m_KeyCooldown > 0.0f) m_KeyCooldown -= dt;
     angle += 0.5f * dt;
 
-#define CLAMP(v, lo, hi)  ((v) < (lo) ? (lo) : ((v) > (hi) ? (hi) : (v)))
+#define CLAMP(v, lo, hi)  ((v) < (lo) ? (lo) : ((v) > (hi) ? (hi) : (v))) // 小组成员修改
 
     if (m_KeyCooldown <= 0.0f)
     {
-        if (GetAsyncKeyState(VK_OEM_PLUS) & 0x8000) { m_N = CLAMP(m_N + 1, 1, 200); if (m_AutoFitCamera) UpdateCameraForCube(); m_KeyCooldown = 0.20f; }
-        else if (GetAsyncKeyState(VK_OEM_MINUS) & 0x8000) { m_N = CLAMP(m_N - 1, 1, 200); if (m_AutoFitCamera) UpdateCameraForCube(); m_KeyCooldown = 0.20f; }
-        else if (GetAsyncKeyState(VK_OEM_4) & 0x8000) { m_Spacing = std::max(1.0f, m_Spacing - 0.5f); if (m_AutoFitCamera) UpdateCameraForCube(); m_KeyCooldown = 0.10f; }
-        else if (GetAsyncKeyState(VK_OEM_6) & 0x8000) { m_Spacing = std::min(20.0f, m_Spacing + 0.5f); if (m_AutoFitCamera) UpdateCameraForCube(); m_KeyCooldown = 0.10f; }
-        else if (GetAsyncKeyState(VK_OEM_COMMA) & 0x8000) { m_OrbitMax = std::max(0, m_OrbitMax - 1); m_OrbitMin = std::min(m_OrbitMin, m_OrbitMax); m_KeyCooldown = 0.10f; }
-        else if (GetAsyncKeyState(VK_OEM_PERIOD) & 0x8000) { m_OrbitMax = std::min(6, m_OrbitMax + 1);                                           m_KeyCooldown = 0.10f; }
+        auto switchMode = [&](CameraMode mode)
+        {
+            if (m_CameraMode != mode)
+            {
+                m_CameraMode = mode;
+                m_FirstMouseEvent = true;
+                UpdateViewMatrix();
+            }
+            m_KeyCooldown = 0.20f;
+        };
+
+        if ((GetAsyncKeyState('1') & 0x8000) || (GetAsyncKeyState(VK_NUMPAD1) & 0x8000))
+        {
+            switchMode(CameraMode::FirstPerson);
+        }
+        else if ((GetAsyncKeyState('2') & 0x8000) || (GetAsyncKeyState(VK_NUMPAD2) & 0x8000))
+        {
+            switchMode(CameraMode::ThirdPerson);
+        }
+        else if ((GetAsyncKeyState('3') & 0x8000) || (GetAsyncKeyState(VK_NUMPAD3) & 0x8000))
+        {
+            switchMode(CameraMode::FreeFlight);
+        }
+        else if (GetAsyncKeyState(VK_OEM_PLUS) & 0x8000)
+        {
+            m_N = CLAMP(m_N + 1, 1, 200);
+            m_KeyCooldown = 0.20f;
+        }
+        else if (GetAsyncKeyState(VK_OEM_MINUS) & 0x8000)
+        {
+            m_N = CLAMP(m_N - 1, 1, 200);
+            m_KeyCooldown = 0.20f;
+        }
+        else if (GetAsyncKeyState(VK_OEM_4) & 0x8000)
+        {
+            m_Spacing = std::max(1.0f, m_Spacing - 0.5f);
+            m_KeyCooldown = 0.10f;
+        }
+        else if (GetAsyncKeyState(VK_OEM_6) & 0x8000)
+        {
+            m_Spacing = std::min(20.0f, m_Spacing + 0.5f);
+            m_KeyCooldown = 0.10f;
+        }
+        else if (GetAsyncKeyState(VK_OEM_COMMA) & 0x8000)
+        {
+            m_OrbitMax = std::max(0, m_OrbitMax - 1);
+            m_OrbitMin = std::min(m_OrbitMin, m_OrbitMax);
+            m_KeyCooldown = 0.10f;
+        }
+        else if (GetAsyncKeyState(VK_OEM_PERIOD) & 0x8000)
+        {
+            m_OrbitMax = std::min(6, m_OrbitMax + 1);
+            m_KeyCooldown = 0.10f;
+        }
     }
 
     static float acc = 0.0f; static int frames = 0;
@@ -76,18 +118,28 @@ void GameApp::UpdateScene(float dt)
     {
         float fps = frames / acc;
         wchar_t title[256];
-        swprintf(title, 256, L"字符立方体  |  N=%d (主字=%d)  |  spacing=%.1f  |  叶子max=%d  |  FPS=%.1f",
-            m_N, m_N * m_N * m_N, m_Spacing, m_OrbitMax, fps);
+        const wchar_t* modeName = L"自由飞行";
+        switch (m_CameraMode)
+        {
+        case CameraMode::FirstPerson: modeName = L"第一人称"; break;
+        case CameraMode::ThirdPerson: modeName = L"第三人称"; break;
+        default: break;
+        }
+
+        swprintf(title, 256, L"字符立方体  |  N=%d (主字=%d)  |  spacing=%.1f  |  叶子max=%d  |  视角=%s  |  FPS=%.1f",
+            m_N, m_N * m_N * m_N, m_Spacing, m_OrbitMax, modeName, fps);
         SetWindowTextW(m_hMainWnd, title);
         acc = 0.0f; frames = 0;
     }
 
-    if (m_AutoFitCamera) UpdateCameraForCube();
-    else UpdateFlightCamera(dt);   // ==== 许双博第三次作业修改：更新飞行相机 ====
+    if (m_CameraMode == CameraMode::FreeFlight)
+        UpdateFlightCamera(dt);   // ==== 许双博第三次作业修改：更新飞行相机 ====
+    else
+        UpdatePlayerCamera(dt);
 }
 
 // 小哈希，稳定随机选择 
-static inline int PickId(int x, int y, int z, int extra = 0)
+static inline int PickId(int x, int y, int z, int extra = 0) // 小组成员修改
 {
     // 常用哈希技巧：互质大数混合，最后取低两位
     unsigned int h = 2166136261u;
@@ -98,7 +150,7 @@ static inline int PickId(int x, int y, int z, int extra = 0)
     return (int)(h & 3u); // 0..3
 }
 
-void GameApp::DrawScene()
+void GameApp::DrawScene() // 小组成员修改
 {
     assert(m_pd3dImmediateContext);
     assert(m_pSwapChain);
@@ -173,6 +225,27 @@ void GameApp::DrawScene()
                 }
             }
 
+    // 绘制玩家模型
+    if (m_PlayerIndexCount > 0 && m_pPlayerVertexBuffer && m_pPlayerIndexBuffer && m_CameraMode != CameraMode::FirstPerson)
+    {
+        UINT stride = sizeof(VertexPosColor);
+        UINT offset = 0;
+        m_pd3dImmediateContext->IASetVertexBuffers(0, 1, m_pPlayerVertexBuffer.GetAddressOf(), &stride, &offset);
+        m_pd3dImmediateContext->IASetIndexBuffer(m_pPlayerIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+
+        XMMATRIX playerScale = XMMatrixScaling(m_PlayerScale, m_PlayerScale, m_PlayerScale);
+        XMMATRIX playerRotate = XMMatrixRotationY(m_PlayerYaw);
+        XMMATRIX playerTranslate = XMMatrixTranslation(m_PlayerPos.x, m_PlayerPos.y, m_PlayerPos.z);
+        m_CBuffer.world = XMMatrixTranspose(playerScale * playerRotate * playerTranslate);
+
+        D3D11_MAPPED_SUBRESOURCE mappedData{};
+        HR(m_pd3dImmediateContext->Map(m_pConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
+        memcpy_s(mappedData.pData, sizeof(m_CBuffer), &m_CBuffer, sizeof(m_CBuffer));
+        m_pd3dImmediateContext->Unmap(m_pConstantBuffer.Get(), 0);
+
+        m_pd3dImmediateContext->DrawIndexed(m_PlayerIndexCount, 0, 0);
+    }
+
     HR(m_pSwapChain->Present(0, 0));
 }
 
@@ -192,7 +265,7 @@ bool GameApp::InitEffect()
     return true;
 }
 
-bool GameApp::InitResource()
+bool GameApp::InitResource() // 小组成员修改
 {
 
     for (int i = 0; i < 4; ++i)
@@ -222,6 +295,29 @@ bool GameApp::InitResource()
         m_IndexCounts[i] = m_Models[i]->GetIndexCount();
     }
 
+    // “你”这个模型的顶点/索引缓冲
+    {
+        D3D11_BUFFER_DESC vbd{};
+        vbd.Usage = D3D11_USAGE_IMMUTABLE;
+        vbd.ByteWidth = sizeof(VertexPosColor) * static_cast<UINT>(YouModelData::VertexCount);
+        vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA initVB{};
+        initVB.pSysMem = YouModelData::Vertices;
+        HR(m_pd3dDevice->CreateBuffer(&vbd, &initVB, m_pPlayerVertexBuffer.GetAddressOf()));
+
+        D3D11_BUFFER_DESC ibd{};
+        ibd.Usage = D3D11_USAGE_IMMUTABLE;
+        ibd.ByteWidth = sizeof(WORD) * static_cast<UINT>(YouModelData::IndexCount);
+        ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA initIB{};
+        initIB.pSysMem = YouModelData::Indices;
+        HR(m_pd3dDevice->CreateBuffer(&ibd, &initIB, m_pPlayerIndexBuffer.GetAddressOf()));
+
+        m_PlayerIndexCount = static_cast<UINT>(YouModelData::IndexCount);
+    }
+
     // 常量缓冲
     D3D11_BUFFER_DESC cbd{};
     cbd.Usage = D3D11_USAGE_DYNAMIC;
@@ -230,7 +326,7 @@ bool GameApp::InitResource()
     cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pConstantBuffer.GetAddressOf()));
 
-    // 初始化 CBuffer，UpdateCameraForCube / UpdateFlightCamera 会覆盖
+    // 初始化 CBuffer，不同相机模式会在帧更新时覆盖视图矩阵
     m_CBuffer.world = XMMatrixIdentity();
     UpdateProjectionMatrix();      // ==== 许双博第三次作业修改：初始化透视矩阵 ====
     UpdateViewMatrix();            // ==== 许双博第三次作业修改：初始化飞行相机视图 ====
@@ -255,37 +351,14 @@ bool GameApp::InitResource()
         D3D11SetDebugObjectName(m_pVertexBuffers[i].Get(), n1);
         D3D11SetDebugObjectName(m_pIndexBuffers[i].Get(), n2);
     }
-
-    if (m_AutoFitCamera) UpdateCameraForCube();
-    else UpdateViewMatrix();   // ==== 许双博第三次作业修改：保持飞行相机初始视图 ====
+    D3D11SetDebugObjectName(m_pPlayerVertexBuffer.Get(), "VB_Player");
+    D3D11SetDebugObjectName(m_pPlayerIndexBuffer.Get(), "IB_Player");
 
     return true;
 }
 
-void GameApp::UpdateCameraForCube()
-{
-    float halfExtent = (m_N - 1) * m_Spacing * 0.5f;
-    float radius = std::max<float>(halfExtent * 1.732051f + 8.0f, 12.0f);
-
-    XMFLOAT3 camPos(0.0f, radius * 0.45f, -radius * 1.3f);
-
-    XMMATRIX view = XMMatrixLookAtLH(
-        XMLoadFloat3(&camPos),
-        XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f),
-        XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
-    );
-
-    float znear = 1.0f;
-    float zfar = std::max<float>(1000.0f, radius * 6.0f);
-
-    XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4 * 1.2f, AspectRatio(), znear, zfar);
-
-    m_CBuffer.view = XMMatrixTranspose(view);
-    m_CBuffer.proj = XMMatrixTranspose(proj);
-}
-
 // ==== 许双博第三次作业修改：根据键鼠输入更新飞行相机 ====
-void GameApp::UpdateFlightCamera(float dt)
+void GameApp::UpdateFlightCamera(float dt) // 小组成员修改
 {
     using namespace DirectX;
 
@@ -341,20 +414,103 @@ void GameApp::UpdateFlightCamera(float dt)
     m_CBuffer.view = XMMatrixTranspose(view);
 }
 
-// ==== 许双博第三次作业修改：刷新飞行相机视图矩阵 ====
-void GameApp::UpdateViewMatrix()
+// ==== 玩家相机（第一/第三人称）更新 ====
+void GameApp::UpdatePlayerCamera(float dt) // 小组成员修改
 {
     using namespace DirectX;
-    XMVECTOR position = XMLoadFloat3(&m_CameraPos);
-    XMVECTOR rotation = XMQuaternionRotationRollPitchYaw(m_CameraPitch, m_CameraYaw, m_CameraRoll);
-    XMVECTOR forward = XMVector3Rotate(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotation);
+
+    if (!m_FirstMouseEvent)
+    {
+        m_PlayerYaw += m_MouseDeltaX * m_MouseSensitivity;
+        m_PlayerPitch += m_MouseDeltaY * m_MouseSensitivity;
+    }
+    m_MouseDeltaX = 0.0f;
+    m_MouseDeltaY = 0.0f;
+
+    const float pitchLimit = XM_PIDIV2 - 0.01f;
+    m_PlayerPitch = std::max(-pitchLimit, std::min(pitchLimit, m_PlayerPitch));
+
+    auto WrapAngle = [](float angle)
+    {
+        while (angle > XM_PI) angle -= XM_2PI;
+        while (angle < -XM_PI) angle += XM_2PI;
+        return angle;
+    };
+    m_PlayerYaw = WrapAngle(m_PlayerYaw);
+
+    XMVECTOR rotation = XMQuaternionRotationRollPitchYaw(m_PlayerPitch, m_PlayerYaw, 0.0f);
+    XMVECTOR forward = XMVector3Normalize(XMVector3Rotate(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotation));
+    XMVECTOR right = XMVector3Normalize(XMVector3Rotate(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), rotation));
+    XMVECTOR position = XMLoadFloat3(&m_PlayerPos);
+
+    float moveSpeed = m_PlayerMoveSpeed;
+    float baseY = XMVectorGetY(position);
+    auto NormalizeXZ = [](DirectX::XMVECTOR v)
+    {
+        DirectX::XMVECTOR lenSq = DirectX::XMVector3LengthSq(v);
+        if (DirectX::XMVectorGetX(lenSq) < 1e-6f)
+            return DirectX::XMVectorZero();
+        return DirectX::XMVector3Normalize(v);
+    };
+    XMVECTOR forwardFlat = NormalizeXZ(DirectX::XMVectorSet(DirectX::XMVectorGetX(forward), 0.0f, DirectX::XMVectorGetZ(forward), 0.0f));
+    XMVECTOR rightFlat = NormalizeXZ(DirectX::XMVectorSet(DirectX::XMVectorGetX(right), 0.0f, DirectX::XMVectorGetZ(right), 0.0f));
+
+    if (GetAsyncKeyState('W') & 0x8000)
+        position += forwardFlat * moveSpeed * dt;
+    if (GetAsyncKeyState('S') & 0x8000)
+        position -= forwardFlat * moveSpeed * dt;
+    if (GetAsyncKeyState('A') & 0x8000)
+        position -= rightFlat * moveSpeed * dt;
+    if (GetAsyncKeyState('D') & 0x8000)
+        position += rightFlat * moveSpeed * dt;
+
+    if (GetAsyncKeyState(VK_SPACE) & 0x8000)
+        baseY += moveSpeed * dt * 0.5f;
+    if (GetAsyncKeyState(VK_LSHIFT) & 0x8000)
+        baseY -= moveSpeed * dt * 0.5f;
+
+    position = XMVectorSetY(position, baseY);
+
+    XMStoreFloat3(&m_PlayerPos, position);
+
+    UpdateViewMatrix();
+}
+
+// ==== 根据当前相机模式刷新视图矩阵 ====
+void GameApp::UpdateViewMatrix() // 小组成员修改
+{
+    using namespace DirectX;
+
+    if (m_CameraMode == CameraMode::FreeFlight)
+    {
+        XMVECTOR position = XMLoadFloat3(&m_CameraPos);
+        XMVECTOR rotation = XMQuaternionRotationRollPitchYaw(m_CameraPitch, m_CameraYaw, m_CameraRoll);
+        XMVECTOR forward = XMVector3Rotate(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotation);
+        XMVECTOR up = XMVector3Normalize(XMVector3Rotate(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rotation));
+        XMMATRIX view = XMMatrixLookToLH(position, forward, up);
+        m_CBuffer.view = XMMatrixTranspose(view);
+        return;
+    }
+
+    XMVECTOR position = XMLoadFloat3(&m_PlayerPos);
+    XMVECTOR rotation = XMQuaternionRotationRollPitchYaw(m_PlayerPitch, m_PlayerYaw, 0.0f);
+    XMVECTOR forward = XMVector3Normalize(XMVector3Rotate(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotation));
     XMVECTOR up = XMVector3Normalize(XMVector3Rotate(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rotation));
-    XMMATRIX view = XMMatrixLookToLH(position, forward, up);
-    m_CBuffer.view = XMMatrixTranspose(view);
+    XMVECTOR eye = position + XMVectorSet(0.0f, m_PlayerEyeHeight, 0.0f, 0.0f);
+
+    if (m_CameraMode == CameraMode::FirstPerson)
+    {
+        m_CBuffer.view = XMMatrixTranspose(XMMatrixLookToLH(eye, forward, up));
+    }
+    else
+    {
+        XMVECTOR camPos = eye - forward * m_ThirdPersonDistance + up * m_ThirdPersonHeight;
+        m_CBuffer.view = XMMatrixTranspose(XMMatrixLookAtLH(camPos, eye, up));
+    }
 }
 
 // ==== 许双博第三次作业修改：刷新飞行相机投影矩阵 ====
-void GameApp::UpdateProjectionMatrix()
+void GameApp::UpdateProjectionMatrix() // 小组成员修改
 {
     using namespace DirectX;
     float aspect = AspectRatio();
@@ -363,12 +519,11 @@ void GameApp::UpdateProjectionMatrix()
 }
 
 // ==== 许双博第三次作业修改：处理鼠标消息，记录移动增量 ====
-LRESULT GameApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT GameApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) // 小组成员修改
 {
     switch (msg)
     {
     case WM_MOUSEMOVE:
-        if (!m_AutoFitCamera)
         {
             int x = GET_X_LPARAM(lParam);
             int y = GET_Y_LPARAM(lParam);
