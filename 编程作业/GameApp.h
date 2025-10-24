@@ -27,6 +27,13 @@ public:
         DirectX::XMMATRIX proj;
     };
 
+    enum class CameraMode
+    {
+        FreeFlight = 0,
+        FirstPerson,
+        ThirdPerson
+    };
+
 public:
     GameApp(HINSTANCE hInstance);
     ~GameApp();
@@ -41,11 +48,14 @@ public:
 private:
     bool InitEffect();
     bool InitResource();
-    void UpdateCameraForCube();   
+    void UpdateCameraForCube();
     // ==== 许双博第三次作业修改：飞行相机辅助函数 ====
     void UpdateFlightCamera(float dt);
+    void UpdateFirstPersonCamera(float dt);
+    void UpdateThirdPersonCamera(float dt);
     void UpdateViewMatrix();
     void UpdateProjectionMatrix();
+    void SetCameraMode(CameraMode mode);
 
 private:
     ComPtr<ID3D11InputLayout>   m_pVertexLayout;
@@ -53,6 +63,10 @@ private:
     std::array<ComPtr<ID3D11Buffer>, 4> m_pVertexBuffers;
     std::array<ComPtr<ID3D11Buffer>, 4> m_pIndexBuffers;
     std::array<UINT, 4>                 m_IndexCounts;
+
+    ComPtr<ID3D11Buffer>        m_pPlayerVertexBuffer;
+    ComPtr<ID3D11Buffer>        m_pPlayerIndexBuffer;
+    UINT                        m_PlayerIndexCount = 0;
 
     ComPtr<ID3D11Buffer>        m_pConstantBuffer;
 
@@ -71,8 +85,7 @@ private:
     float   m_OrbitRadius = 2.5f; 
     int     m_OrbitMin = 1;       
     int     m_OrbitMax = 3;       
-    bool    m_AutoFitCamera = false; // ==== 许双博第三次作业修改：默认启用飞行相机 ====
-    float   m_KeyCooldown = 0.0f;   
+    float   m_KeyCooldown = 0.0f;
 
     // ==== 许双博第三次作业修改：飞行相机状态 ====
     DirectX::XMFLOAT3 m_CameraPos = DirectX::XMFLOAT3(0.0f, 20.0f, -80.0f);
@@ -86,6 +99,17 @@ private:
     float   m_MouseDeltaY = 0.0f;
     POINT   m_LastMousePos = { 0, 0 };
     bool    m_FirstMouseEvent = true;
+
+    CameraMode m_CameraMode = CameraMode::FreeFlight;
+
+    DirectX::XMFLOAT3 m_PlayerPos = DirectX::XMFLOAT3(0.0f, 0.0f, -40.0f);
+    float   m_PlayerYaw = 0.0f;
+    float   m_PlayerPitch = 0.0f;
+    float   m_PlayerMoveSpeed = 20.0f;
+    float   m_PlayerHeight = 2.0f;
+    float   m_PlayerScale = 2.0f;
+    float   m_ThirdPersonDistance = 12.0f;
+    float   m_ThirdPersonHeightOffset = 6.0f;
 };
 
 #endif
