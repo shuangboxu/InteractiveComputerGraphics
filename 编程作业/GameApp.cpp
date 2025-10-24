@@ -42,7 +42,15 @@ bool GameApp::Init()
 void GameApp::OnResize()
 {
     D3DApp::OnResize();
-    if (m_AutoFitCamera) UpdateCameraForCube();   // ==== 许双博改的 ====
+    if (m_AutoFitCamera)
+    {
+        UpdateCameraForCube();   // ==== 许双博改的 ====
+    }
+    else
+    {
+        UpdateProjectionMatrix();   // ==== 许双博第三次作业修改：保持飞行相机的投影矩阵 ====
+        UpdateViewMatrix();         // ==== 许双博第三次作业修改：立即刷新视图矩阵 ====
+    }
 }
 
 void GameApp::UpdateScene(float dt)
@@ -75,6 +83,7 @@ void GameApp::UpdateScene(float dt)
     }
 
     if (m_AutoFitCamera) UpdateCameraForCube();
+    else UpdateFlightCamera(dt);   // ==== 许双博第三次作业修改：更新飞行相机 ====
 }
 
 // ==== 许双博改的：小哈希，稳定随机选择 0..3 ====
@@ -221,14 +230,10 @@ bool GameApp::InitResource()
     cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     HR(m_pd3dDevice->CreateBuffer(&cbd, nullptr, m_pConstantBuffer.GetAddressOf()));
 
-    // 初始化 CBuffer，UpdateCameraForCube 会覆盖
+    // 初始化 CBuffer，UpdateCameraForCube / UpdateFlightCamera 会覆盖
     m_CBuffer.world = XMMatrixIdentity();
-    m_CBuffer.view = XMMatrixTranspose(XMMatrixLookAtLH(
-        XMVectorSet(0.0f, 22.0f, -35.0f, 0.0f),
-        XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f),
-        XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)
-    ));
-    m_CBuffer.proj = XMMatrixTranspose(XMMatrixPerspectiveFovLH(XM_PIDIV2, AspectRatio(), 1.0f, 1000.0f));
+    UpdateProjectionMatrix();      // ==== 许双博第三次作业修改：初始化透视矩阵 ====
+    UpdateViewMatrix();            // ==== 许双博第三次作业修改：初始化飞行相机视图 ====
 
     // IA 设置：拓扑 & 输入布局（VB/IB 在 Draw 时切换）
     m_pd3dImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -252,6 +257,7 @@ bool GameApp::InitResource()
     }
 
     if (m_AutoFitCamera) UpdateCameraForCube();
+    else UpdateViewMatrix();   // ==== 许双博第三次作业修改：保持飞行相机初始视图 ====
 
     return true;
 }
@@ -277,4 +283,114 @@ void GameApp::UpdateCameraForCube()
 
     m_CBuffer.view = XMMatrixTranspose(view);
     m_CBuffer.proj = XMMatrixTranspose(proj);
+}
+
+// ==== 许双博第三次作业修改：根据键鼠输入更新飞行相机 ====
+void GameApp::UpdateFlightCamera(float dt)
+{
+    using namespace DirectX;
+
+    // 鼠标控制偏航和俯仰
+    if (!m_FirstMouseEvent)
+    {
+        m_CameraYaw += m_MouseDeltaX * m_MouseSensitivity;
+        m_CameraPitch += m_MouseDeltaY * m_MouseSensitivity;
+    }
+    m_MouseDeltaX = 0.0f;
+    m_MouseDeltaY = 0.0f;
+
+    // 限制俯仰角避免翻折
+    const float pitchLimit = XM_PIDIV2 - 0.01f;
+    m_CameraPitch = std::max(-pitchLimit, std::min(pitchLimit, m_CameraPitch));
+
+    // 键盘桶滚，左右滚转
+    if (GetAsyncKeyState('Q') & 0x8000)
+        m_CameraRoll -= m_RollSpeed * dt;
+    if (GetAsyncKeyState('E') & 0x8000)
+        m_CameraRoll += m_RollSpeed * dt;
+
+    // 保持角度在 [-pi, pi] 范围，避免浮点漂移
+    auto WrapAngle = [](float angle)
+    {
+        while (angle > XM_PI) angle -= XM_2PI;
+        while (angle < -XM_PI) angle += XM_2PI;
+        return angle;
+    };
+    m_CameraYaw = WrapAngle(m_CameraYaw);
+    m_CameraRoll = WrapAngle(m_CameraRoll);
+
+    XMVECTOR rotation = XMQuaternionRotationRollPitchYaw(m_CameraPitch, m_CameraYaw, m_CameraRoll);
+    XMVECTOR forward = XMVector3Rotate(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotation);
+    XMVECTOR right = XMVector3Rotate(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), rotation);
+    XMVECTOR up = XMVector3Normalize(XMVector3Rotate(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rotation));
+
+    XMVECTOR position = XMLoadFloat3(&m_CameraPos);
+    float moveSpeed = m_MoveSpeed;
+
+    if (GetAsyncKeyState('W') & 0x8000)
+        position += forward * moveSpeed * dt;
+    if (GetAsyncKeyState('S') & 0x8000)
+        position -= forward * moveSpeed * dt;
+    if (GetAsyncKeyState('A') & 0x8000)
+        position -= right * moveSpeed * dt;
+    if (GetAsyncKeyState('D') & 0x8000)
+        position += right * moveSpeed * dt;
+
+    XMStoreFloat3(&m_CameraPos, position);
+
+    XMMATRIX view = XMMatrixLookToLH(position, forward, up);
+    m_CBuffer.view = XMMatrixTranspose(view);
+}
+
+// ==== 许双博第三次作业修改：刷新飞行相机视图矩阵 ====
+void GameApp::UpdateViewMatrix()
+{
+    using namespace DirectX;
+    XMVECTOR position = XMLoadFloat3(&m_CameraPos);
+    XMVECTOR rotation = XMQuaternionRotationRollPitchYaw(m_CameraPitch, m_CameraYaw, m_CameraRoll);
+    XMVECTOR forward = XMVector3Rotate(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotation);
+    XMVECTOR up = XMVector3Normalize(XMVector3Rotate(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rotation));
+    XMMATRIX view = XMMatrixLookToLH(position, forward, up);
+    m_CBuffer.view = XMMatrixTranspose(view);
+}
+
+// ==== 许双博第三次作业修改：刷新飞行相机投影矩阵 ====
+void GameApp::UpdateProjectionMatrix()
+{
+    using namespace DirectX;
+    float aspect = AspectRatio();
+    float fov = XM_PIDIV4 * 1.1f;
+    m_CBuffer.proj = XMMatrixTranspose(XMMatrixPerspectiveFovLH(fov, aspect, 0.1f, 2000.0f));
+}
+
+// ==== 许双博第三次作业修改：处理鼠标消息，记录移动增量 ====
+LRESULT GameApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg)
+    {
+    case WM_MOUSEMOVE:
+        if (!m_AutoFitCamera)
+        {
+            int x = GET_X_LPARAM(lParam);
+            int y = GET_Y_LPARAM(lParam);
+            if (m_FirstMouseEvent)
+            {
+                m_LastMousePos.x = x;
+                m_LastMousePos.y = y;
+                m_FirstMouseEvent = false;
+            }
+            else
+            {
+                m_MouseDeltaX += float(x - m_LastMousePos.x);
+                m_MouseDeltaY += float(y - m_LastMousePos.y);
+                m_LastMousePos.x = x;
+                m_LastMousePos.y = y;
+            }
+        }
+        return 0;
+    case WM_SETFOCUS:
+        m_FirstMouseEvent = true;
+        return 0;
+    }
+    return D3DApp::MsgProc(hwnd, msg, wParam, lParam);
 }

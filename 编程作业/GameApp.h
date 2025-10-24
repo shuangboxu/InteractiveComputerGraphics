@@ -4,6 +4,9 @@
 #include "d3dApp.h"
 #include <array>        // ==== 许双博改的 ====
 #include <vector>       // ==== 许双博改的 ====
+// ==== 许双博第三次作业修改：飞行相机需要用到窗口结构和鼠标宏 ====
+#include <Windows.h>
+#include <windowsx.h>
 
 class NameVertices; // 声明类
 
@@ -32,11 +35,17 @@ public:
     void OnResize();
     void UpdateScene(float dt);
     void DrawScene();
+    // ==== 许双博第三次作业修改：处理鼠标消息，收集相机输入 ====
+    LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) override;
 
 private:
     bool InitEffect();
     bool InitResource();
     void UpdateCameraForCube();   // ==== 许双博改的 ====
+    // ==== 许双博第三次作业修改：飞行相机辅助函数 ====
+    void UpdateFlightCamera(float dt);
+    void UpdateViewMatrix();
+    void UpdateProjectionMatrix();
 
 private:
     ComPtr<ID3D11InputLayout>   m_pVertexLayout;
@@ -62,8 +71,21 @@ private:
     float   m_OrbitRadius = 2.5f; // ==== 许双博改的 ====
     int     m_OrbitMin = 1;       // ==== 许双博改的 ====
     int     m_OrbitMax = 3;       // ==== 许双博改的 ====
-    bool    m_AutoFitCamera = true; // ==== 许双博改的 ====
+    bool    m_AutoFitCamera = false; // ==== 许双博第三次作业修改：默认启用飞行相机 ====
     float   m_KeyCooldown = 0.0f;   // ==== 许双博改的 ====
+
+    // ==== 许双博第三次作业修改：飞行相机状态 ====
+    DirectX::XMFLOAT3 m_CameraPos = DirectX::XMFLOAT3(0.0f, 20.0f, -80.0f);
+    float   m_CameraYaw = 0.0f;
+    float   m_CameraPitch = -0.25f;
+    float   m_CameraRoll = 0.0f;
+    float   m_MoveSpeed = 35.0f;
+    float   m_RollSpeed = DirectX::XMConvertToRadians(60.0f);
+    float   m_MouseSensitivity = 0.0025f;
+    float   m_MouseDeltaX = 0.0f;
+    float   m_MouseDeltaY = 0.0f;
+    POINT   m_LastMousePos = { 0, 0 };
+    bool    m_FirstMouseEvent = true;
 };
 
 #endif
