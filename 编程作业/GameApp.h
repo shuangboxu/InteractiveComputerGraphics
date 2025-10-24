@@ -41,11 +41,28 @@ public:
 private:
     bool InitEffect();
     bool InitResource();
-    void UpdateCameraForCube();   
+    void UpdateCameraForCube();
     // ==== 许双博第三次作业修改：飞行相机辅助函数 ====
     void UpdateFlightCamera(float dt);
-    void UpdateViewMatrix();
     void UpdateProjectionMatrix();
+    // ==== 视角切换 ====
+    enum class CameraMode
+    {
+        AutoFit,
+        FirstPerson,
+        ThirdPerson,
+        FreeFlight
+    };
+    void SetCameraMode(CameraMode mode);
+    void UpdateFirstPersonCamera(float dt);
+    void UpdateThirdPersonCamera(float dt);
+    void UpdatePlayerMovement(float dt);
+    void UpdateFreeFlightViewMatrix();
+    void UpdateFirstPersonViewMatrix();
+    void UpdateThirdPersonViewMatrix();
+    void ApplyViewMatrix();
+    DirectX::XMVECTOR GetForwardVector(float yaw, float pitch) const;
+    bool IsMouseLookEnabled() const;
 
 private:
     ComPtr<ID3D11InputLayout>   m_pVertexLayout;
@@ -62,17 +79,19 @@ private:
 
     // ==== 4 个模型对象缓存 ====
     std::array<NameVertices*, 4> m_Models = { nullptr, nullptr, nullptr, nullptr };
+    ComPtr<ID3D11Buffer>        m_pPlayerVertexBuffer;
+    ComPtr<ID3D11Buffer>        m_pPlayerIndexBuffer;
+    UINT                        m_PlayerIndexCount = 0;
 
     float   angle = 0.0f;
 
     // 立方体阵列控制
-    int     m_N = 2;             
+    int     m_N = 2;
     float   m_Spacing = 4.5f;     
     float   m_OrbitRadius = 2.5f; 
     int     m_OrbitMin = 1;       
     int     m_OrbitMax = 3;       
-    bool    m_AutoFitCamera = false; // ==== 许双博第三次作业修改：默认启用飞行相机 ====
-    float   m_KeyCooldown = 0.0f;   
+    float   m_KeyCooldown = 0.0f;
 
     // ==== 许双博第三次作业修改：飞行相机状态 ====
     DirectX::XMFLOAT3 m_CameraPos = DirectX::XMFLOAT3(0.0f, 20.0f, -80.0f);
@@ -86,6 +105,19 @@ private:
     float   m_MouseDeltaY = 0.0f;
     POINT   m_LastMousePos = { 0, 0 };
     bool    m_FirstMouseEvent = true;
+
+    CameraMode m_CameraMode = CameraMode::FreeFlight;
+
+    // ==== 角色状态 ====
+    DirectX::XMFLOAT3 m_PlayerPos = DirectX::XMFLOAT3(0.0f, 0.0f, -40.0f);
+    float   m_PlayerYaw = 0.0f;
+    float   m_PlayerPitch = 0.0f;
+    float   m_PlayerMoveSpeed = 25.0f;
+    float   m_PlayerEyeHeight = 1.5f;
+    float   m_ThirdPersonDistance = 15.0f;
+    float   m_ThirdPersonHeight = 4.0f;
+    DirectX::XMFLOAT3 m_FirstPersonEyePos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+    DirectX::XMFLOAT3 m_ThirdPersonCameraPos = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 };
 
 #endif
