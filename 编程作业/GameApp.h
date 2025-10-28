@@ -86,7 +86,7 @@ private:
     float   angle = 0.0f;
 
     // 立方体阵列控制
-    int     m_N = 2;
+    int     m_N = 10;
     float   m_Spacing = 4.5f;     
     float   m_OrbitRadius = 2.5f; 
     int     m_OrbitMin = 1;       
@@ -98,8 +98,8 @@ private:
     float   m_CameraYaw = 0.0f;
     float   m_CameraPitch = -0.25f;
     float   m_CameraRoll = 0.0f;
-    float   m_MoveSpeed = 35.0f;
-    float   m_RollSpeed = DirectX::XMConvertToRadians(60.0f);
+    float   m_MoveSpeed = 15.0f;// 移动速度
+    float   m_RollSpeed = DirectX::XMConvertToRadians(30.0f);// 转动速度
     float   m_MouseSensitivity = 0.0025f;
     float   m_MouseDeltaX = 0.0f;
     float   m_MouseDeltaY = 0.0f;
@@ -112,7 +112,7 @@ private:
     DirectX::XMFLOAT3 m_PlayerPos = DirectX::XMFLOAT3(0.0f, 0.0f, -40.0f);
     float   m_PlayerYaw = 0.0f;
     float   m_PlayerPitch = 0.0f;
-    float   m_PlayerMoveSpeed = 25.0f;
+    float   m_PlayerMoveSpeed = 15.0f;// 移动速度
     float   m_PlayerEyeHeight = 1.5f;
     float   m_ThirdPersonDistance = 15.0f;
     float   m_ThirdPersonHeight = 4.0f;
