@@ -1,0 +1,25 @@
+# Ignore Visual Studio cache directories
+.vs/
+x64/
+Debug/
+Release/
+VS2019_Win10/
+ipch/
+
+# Ignore build and intermediate files
+*.obj
+*.pdb
+*.idb
+*.ilk
+*.tlog
+*.log
+*.pch
+*.suo
+*.db
+*.db-shm
+*.db-wal
+*.recipe
+*.exe
+*.bak
+*.opendb
+*.lastbuildstate
