@@ -15,9 +15,14 @@
 
 using namespace DirectX;
 
-const D3D11_INPUT_ELEMENT_DESC GameApp::VertexPosColor::inputLayout[2] = {
+// ==== 许双博第四次作业修改：顶点布局包含位置、法线、颜色 ====
+const D3D11_INPUT_ELEMENT_DESC GameApp::VertexPosColor::inputLayout[3] = {
+    // 位置：3 * 4字节 = 12字节
     { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-    { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+    // 法线：紧随位置之后，3 * 4字节 = 12字节
+    { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    // 颜色：紧随法线之后，4 * 4字节 = 16字节
+    { "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 };
 
 GameApp::GameApp(HINSTANCE hInstance)
@@ -42,14 +47,14 @@ bool GameApp::Init()
 void GameApp::OnResize()
 {
     D3DApp::OnResize();
-    UpdateProjectionMatrix();   // ==== 许双博第三次作业修改：保持飞行相机的投影矩阵 ====
+    UpdateProjectionMatrix();   // ==== 保持飞行相机的投影矩阵 ====
     ApplyViewMatrix();          // ==== 视角更新 ====
 }
 
 void GameApp::UpdateScene(float dt)
 {
     if (m_KeyCooldown > 0.0f) m_KeyCooldown -= dt;
-    angle += 0.5f * dt;
+    //angle += 0.5f * dt;//控制旋转
 
 #define CLAMP(v, lo, hi)  ((v) < (lo) ? (lo) : ((v) > (hi) ? (hi) : (v)))
 
@@ -61,10 +66,62 @@ void GameApp::UpdateScene(float dt)
         else if (GetAsyncKeyState(VK_OEM_6) & 0x8000) { m_Spacing = std::min(20.0f, m_Spacing + 0.5f); if (m_CameraMode == CameraMode::AutoFit) UpdateCameraForCube(); m_KeyCooldown = 0.10f; }
         else if (GetAsyncKeyState(VK_OEM_COMMA) & 0x8000) { m_OrbitMax = std::max(0, m_OrbitMax - 1); m_OrbitMin = std::min(m_OrbitMin, m_OrbitMax); m_KeyCooldown = 0.10f; }
         else if (GetAsyncKeyState(VK_OEM_PERIOD) & 0x8000) { m_OrbitMax = std::min(6, m_OrbitMax + 1); m_KeyCooldown = 0.10f; }
-        else if (GetAsyncKeyState('1') & 0x8000) { SetCameraMode(CameraMode::FirstPerson); m_KeyCooldown = 0.20f; }
-        else if (GetAsyncKeyState('2') & 0x8000) { SetCameraMode(CameraMode::ThirdPerson); m_KeyCooldown = 0.20f; }
-        else if (GetAsyncKeyState('3') & 0x8000) { SetCameraMode(CameraMode::FreeFlight); m_KeyCooldown = 0.20f; }
-        else if (GetAsyncKeyState('0') & 0x8000) { SetCameraMode(CameraMode::AutoFit); m_KeyCooldown = 0.20f; }
+        // 在处理光照按键前读取 Shift 状态
+        bool shiftPressed = (GetAsyncKeyState(VK_SHIFT) & 0x8000);
+        // 光照开关：按 1/2/3 切换点光源、聚光灯、方向光
+        if ((GetAsyncKeyState('1') & 0x8000) && !shiftPressed) {
+            m_PointLightEnabled = !m_PointLightEnabled;
+            m_Lights[0].enabled = m_PointLightEnabled ? 1 : 0;
+            m_KeyCooldown = 0.20f;
+        }
+        else if ((GetAsyncKeyState('2') & 0x8000) && !shiftPressed) {
+            m_SpotLightEnabled = !m_SpotLightEnabled;
+            m_Lights[1].enabled = m_SpotLightEnabled ? 1 : 0;
+            m_KeyCooldown = 0.20f;
+        }
+        else if ((GetAsyncKeyState('3') & 0x8000) && !shiftPressed) {
+            m_DirLightEnabled = !m_DirLightEnabled;
+            m_Lights[2].enabled = m_DirLightEnabled ? 1 : 0;
+            m_KeyCooldown = 0.20f;
+        }
+        //else if (GetAsyncKeyState('1') & 0x8000) { SetCameraMode(CameraMode::FirstPerson); m_KeyCooldown = 0.20f; }
+        //else if (GetAsyncKeyState('2') & 0x8000) { SetCameraMode(CameraMode::ThirdPerson); m_KeyCooldown = 0.20f; }
+        //else if (GetAsyncKeyState('3') & 0x8000) { SetCameraMode(CameraMode::FreeFlight); m_KeyCooldown = 0.20f; }
+        //else if (GetAsyncKeyState('0') & 0x8000) { SetCameraMode(CameraMode::AutoFit); m_KeyCooldown = 0.20f; }
+        // 检查是否同时按下 Shift 键切换视角
+        if (shiftPressed)
+        {
+            if (GetAsyncKeyState('1') & 0x8000) { SetCameraMode(CameraMode::FirstPerson); m_KeyCooldown = 0.20f; }
+            else if (GetAsyncKeyState('2') & 0x8000) { SetCameraMode(CameraMode::ThirdPerson); m_KeyCooldown = 0.20f; }
+            else if (GetAsyncKeyState('3') & 0x8000) { SetCameraMode(CameraMode::FreeFlight); m_KeyCooldown = 0.20f; }
+            else if (GetAsyncKeyState('0') & 0x8000) { SetCameraMode(CameraMode::AutoFit); m_KeyCooldown = 0.20f; }
+        }
+
+    }
+
+    // ==== 许双博第四次作业修改：更新光源动画和方向 ====
+    // 更新累计时间
+    m_TotalTime += dt;
+    // 动画路径：萤火虫在字符森林间来回运动
+    {
+        float radius = (m_N - 1) * m_Spacing * 0.6f;
+        float yBase  = 2.0f + (m_N * 0.2f);
+        float x = std::sinf(m_TotalTime * 0.7f) * radius;
+        float z = std::cosf(m_TotalTime * 1.3f) * radius;
+        float y = yBase + std::sinf(m_TotalTime * 2.0f) * (radius * 0.1f);
+        m_Lights[0].position = DirectX::XMFLOAT3(x, y, z);
+        // 点光源颜色可以缓慢变化以模拟萤火虫色彩
+        float t = (std::sinf(m_TotalTime * 0.5f) + 1.0f) * 0.5f;
+        m_Lights[0].diffuse  = DirectX::XMFLOAT3(0.8f + 0.2f * t, 0.8f * (1.0f - t), 1.0f);
+        m_Lights[0].specular = m_Lights[0].diffuse;
+    }
+    // 更新聚光灯位置和方向绑定到相机
+    {
+        // 位置跟随相机眼睛
+        m_Lights[1].position = m_CameraPos;
+        // 方向指向相机前方
+        DirectX::XMVECTOR fwd = GetForwardVector(m_CameraYaw, m_CameraPitch);
+        DirectX::XMStoreFloat3(&m_Lights[1].direction, fwd);
     }
 
     static float acc = 0.0f; static int frames = 0;
@@ -157,6 +214,11 @@ void GameApp::DrawScene()
 
                 // 主字：S * R * T
                 m_CBuffer.world = XMMatrixTranspose(mScale * mRotate * mTranslate);
+                // ==== 许双博第四次作业修改：更新材质、光源和观察者位置 ====
+                m_CBuffer.material = m_ObjectMaterials[id];
+                m_CBuffer.eyePos   = m_CameraPos;
+                // 拷贝光源数组
+                for (int li = 0; li < 3; ++li) m_CBuffer.lights[li] = m_Lights[li];
 
                 D3D11_MAPPED_SUBRESOURCE mappedData{};
                 HR(m_pd3dImmediateContext->Map(m_pConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
@@ -184,6 +246,10 @@ void GameApp::DrawScene()
 
                     XMMATRIX worldChild = mChildScale * mChildOffset * mChildRot * mScale * mTranslate;
                     m_CBuffer.world = XMMatrixTranspose(worldChild);
+                    // ==== 许双博第四次作业修改：更新材质、光源和观察者位置 ====  (子字)
+                    m_CBuffer.material = m_ObjectMaterials[childId];
+                    m_CBuffer.eyePos   = m_CameraPos;
+                    for (int li = 0; li < 3; ++li) m_CBuffer.lights[li] = m_Lights[li];
 
                     HR(m_pd3dImmediateContext->Map(m_pConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
                     memcpy_s(mappedData.pData, sizeof(m_CBuffer), &m_CBuffer, sizeof(m_CBuffer));
@@ -206,6 +272,10 @@ void GameApp::DrawScene()
         XMMATRIX playerRotation = XMMatrixRotationY(m_PlayerYaw);
         XMMATRIX playerTranslation = XMMatrixTranslation(m_PlayerPos.x, m_PlayerPos.y + 1.25f, m_PlayerPos.z);
         m_CBuffer.world = XMMatrixTranspose(playerScale * playerRotation * playerTranslation);
+        // ==== 许双博第四次作业修改：玩家使用默认材质并更新光照 ====
+        m_CBuffer.material = m_ObjectMaterials[0];
+        m_CBuffer.eyePos   = m_CameraPos;
+        for (int li = 0; li < 3; ++li) m_CBuffer.lights[li] = m_Lights[li];
 
         D3D11_MAPPED_SUBRESOURCE mappedData{};
         HR(m_pd3dImmediateContext->Map(m_pConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedData));
@@ -264,45 +334,80 @@ bool GameApp::InitResource()
     }
 
     // 玩家立方体网格
-    VertexPosColor playerVertices[] =
+    // ==== 许双博第四次作业修改：将立方体按三角形拆分顶点，并计算法线 ====
     {
-        { XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT4(0.15f, 0.6f, 0.95f, 1.0f) },
-        { XMFLOAT3(-0.5f, +0.5f, -0.5f), XMFLOAT4(0.15f, 0.6f, 0.95f, 1.0f) },
-        { XMFLOAT3(+0.5f, +0.5f, -0.5f), XMFLOAT4(0.15f, 0.6f, 0.95f, 1.0f) },
-        { XMFLOAT3(+0.5f, -0.5f, -0.5f), XMFLOAT4(0.15f, 0.6f, 0.95f, 1.0f) },
-        { XMFLOAT3(-0.5f, -0.5f, +0.5f), XMFLOAT4(0.05f, 0.35f, 0.75f, 1.0f) },
-        { XMFLOAT3(-0.5f, +0.5f, +0.5f), XMFLOAT4(0.05f, 0.35f, 0.75f, 1.0f) },
-        { XMFLOAT3(+0.5f, +0.5f, +0.5f), XMFLOAT4(0.05f, 0.35f, 0.75f, 1.0f) },
-        { XMFLOAT3(+0.5f, -0.5f, +0.5f), XMFLOAT4(0.05f, 0.35f, 0.75f, 1.0f) }
-    };
-
-    WORD playerIndices[] =
-    {
-        0, 1, 2, 0, 2, 3,
-        4, 6, 5, 4, 7, 6,
-        4, 5, 1, 4, 1, 0,
-        3, 2, 6, 3, 6, 7,
-        1, 5, 6, 1, 6, 2,
-        4, 0, 3, 4, 3, 7
-    };
-
-    D3D11_BUFFER_DESC playerVbd{};
-    playerVbd.Usage = D3D11_USAGE_IMMUTABLE;
-    playerVbd.ByteWidth = sizeof(playerVertices);
-    playerVbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    D3D11_SUBRESOURCE_DATA playerVBData{};
-    playerVBData.pSysMem = playerVertices;
-    HR(m_pd3dDevice->CreateBuffer(&playerVbd, &playerVBData, m_pPlayerVertexBuffer.ReleaseAndGetAddressOf()));
-
-    D3D11_BUFFER_DESC playerIbd{};
-    playerIbd.Usage = D3D11_USAGE_IMMUTABLE;
-    playerIbd.ByteWidth = sizeof(playerIndices);
-    playerIbd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    D3D11_SUBRESOURCE_DATA playerIBData{};
-    playerIBData.pSysMem = playerIndices;
-    HR(m_pd3dDevice->CreateBuffer(&playerIbd, &playerIBData, m_pPlayerIndexBuffer.ReleaseAndGetAddressOf()));
-
-    m_PlayerIndexCount = static_cast<UINT>(_countof(playerIndices));
+        // 原始立方体的顶点位置和颜色（不含法线）
+        struct TmpVertex { DirectX::XMFLOAT3 pos; DirectX::XMFLOAT4 color; };
+        TmpVertex origVerts[] =
+        {
+            { XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT4(0.15f, 0.6f, 0.95f, 1.0f) },
+            { XMFLOAT3(-0.5f, +0.5f, -0.5f), XMFLOAT4(0.15f, 0.6f, 0.95f, 1.0f) },
+            { XMFLOAT3(+0.5f, +0.5f, -0.5f), XMFLOAT4(0.15f, 0.6f, 0.95f, 1.0f) },
+            { XMFLOAT3(+0.5f, -0.5f, -0.5f), XMFLOAT4(0.15f, 0.6f, 0.95f, 1.0f) },
+            { XMFLOAT3(-0.5f, -0.5f, +0.5f), XMFLOAT4(0.05f, 0.35f, 0.75f, 1.0f) },
+            { XMFLOAT3(-0.5f, +0.5f, +0.5f), XMFLOAT4(0.05f, 0.35f, 0.75f, 1.0f) },
+            { XMFLOAT3(+0.5f, +0.5f, +0.5f), XMFLOAT4(0.05f, 0.35f, 0.75f, 1.0f) },
+            { XMFLOAT3(+0.5f, -0.5f, +0.5f), XMFLOAT4(0.05f, 0.35f, 0.75f, 1.0f) }
+        };
+        WORD origIndices[] =
+        {
+            0, 1, 2, 0, 2, 3,        // -Z 面
+            4, 6, 5, 4, 7, 6,        // +Z 面
+            4, 5, 1, 4, 1, 0,        // -X 面
+            3, 2, 6, 3, 6, 7,        // +X 面
+            1, 5, 6, 1, 6, 2,        // +Y 面
+            4, 0, 3, 4, 3, 7         // -Y 面
+        };
+        std::vector<VertexPosColor> expandedVerts;
+        std::vector<WORD>           expandedIndices;
+        expandedVerts.reserve(_countof(origIndices));
+        expandedIndices.reserve(_countof(origIndices));
+        for (size_t i = 0; i < _countof(origIndices); i += 3)
+        {
+            WORD ia = origIndices[i];
+            WORD ib = origIndices[i + 1];
+            WORD ic = origIndices[i + 2];
+            DirectX::XMFLOAT3 p0 = origVerts[ia].pos;
+            DirectX::XMFLOAT3 p1 = origVerts[ib].pos;
+            DirectX::XMFLOAT3 p2 = origVerts[ic].pos;
+            DirectX::XMVECTOR v0 = DirectX::XMLoadFloat3(&p0);
+            DirectX::XMVECTOR v1 = DirectX::XMLoadFloat3(&p1);
+            DirectX::XMVECTOR v2 = DirectX::XMLoadFloat3(&p2);
+            DirectX::XMVECTOR e1 = DirectX::XMVectorSubtract(v1, v0);
+            DirectX::XMVECTOR e2 = DirectX::XMVectorSubtract(v2, v0);
+            DirectX::XMVECTOR n  = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(e1, e2));
+            DirectX::XMFLOAT3 normal;
+            DirectX::XMStoreFloat3(&normal, n);
+            // 创建三个新顶点
+            VertexPosColor vtx0; vtx0.pos = p0; vtx0.normal = normal; vtx0.color = origVerts[ia].color;
+            VertexPosColor vtx1; vtx1.pos = p1; vtx1.normal = normal; vtx1.color = origVerts[ib].color;
+            VertexPosColor vtx2; vtx2.pos = p2; vtx2.normal = normal; vtx2.color = origVerts[ic].color;
+            WORD baseIndex = static_cast<WORD>(expandedVerts.size());
+            expandedVerts.push_back(vtx0);
+            expandedVerts.push_back(vtx1);
+            expandedVerts.push_back(vtx2);
+            expandedIndices.push_back(baseIndex);
+            expandedIndices.push_back(baseIndex + 1);
+            expandedIndices.push_back(baseIndex + 2);
+        }
+        // 创建顶点缓冲
+        D3D11_BUFFER_DESC playerVbd{};
+        playerVbd.Usage = D3D11_USAGE_IMMUTABLE;
+        playerVbd.ByteWidth = static_cast<UINT>(sizeof(VertexPosColor) * expandedVerts.size());
+        playerVbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA playerVBData{};
+        playerVBData.pSysMem = expandedVerts.data();
+        HR(m_pd3dDevice->CreateBuffer(&playerVbd, &playerVBData, m_pPlayerVertexBuffer.ReleaseAndGetAddressOf()));
+        // 创建索引缓冲
+        D3D11_BUFFER_DESC playerIbd{};
+        playerIbd.Usage = D3D11_USAGE_IMMUTABLE;
+        playerIbd.ByteWidth = static_cast<UINT>(sizeof(WORD) * expandedIndices.size());
+        playerIbd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA playerIBData{};
+        playerIBData.pSysMem = expandedIndices.data();
+        HR(m_pd3dDevice->CreateBuffer(&playerIbd, &playerIBData, m_pPlayerIndexBuffer.ReleaseAndGetAddressOf()));
+        m_PlayerIndexCount = static_cast<UINT>(expandedIndices.size());
+    }
 
     // 常量缓冲
     D3D11_BUFFER_DESC cbd{};
@@ -325,6 +430,9 @@ bool GameApp::InitResource()
     m_pd3dImmediateContext->VSSetShader(m_pVertexShader.Get(), nullptr, 0);
     m_pd3dImmediateContext->VSSetConstantBuffers(0, 1, m_pConstantBuffer.GetAddressOf());
     m_pd3dImmediateContext->PSSetShader(m_pPixelShader.Get(), nullptr, 0);
+    // 把常量缓冲同时绑定到像素着色器（很重要！）
+    m_pd3dImmediateContext->PSSetConstantBuffers(0, 1, m_pConstantBuffer.GetAddressOf());
+
 
     // 调试名
     D3D11SetDebugObjectName(m_pVertexLayout.Get(), "VertexPosColorLayout");
@@ -340,8 +448,77 @@ bool GameApp::InitResource()
     D3D11SetDebugObjectName(m_pPlayerVertexBuffer.Get(), "Player_VB");
     D3D11SetDebugObjectName(m_pPlayerIndexBuffer.Get(), "Player_IB");
 
+    // ==== 许双博第四次作业修改：初始化材质和光照 ====
+    // 为四个汉字模型设置不同的材质颜色和高光参数
+    {
+        using DirectX::XMFLOAT3;
+        // 材质0：偏红色
+        m_ObjectMaterials[0].ambient  = XMFLOAT3(0.3f, 0.05f, 0.05f);
+        m_ObjectMaterials[0].diffuse  = XMFLOAT3(0.7f, 0.2f, 0.2f);
+        m_ObjectMaterials[0].specular = XMFLOAT3(1.0f, 1.0f, 1.0f);
+        m_ObjectMaterials[0].shininess= 32.0f;
+        // 材质1：偏绿色
+        m_ObjectMaterials[1].ambient  = XMFLOAT3(0.05f, 0.3f, 0.05f);
+        m_ObjectMaterials[1].diffuse  = XMFLOAT3(0.2f, 0.7f, 0.2f);
+        m_ObjectMaterials[1].specular = XMFLOAT3(1.0f, 1.0f, 1.0f);
+        m_ObjectMaterials[1].shininess= 32.0f;
+        // 材质2：偏蓝色
+        m_ObjectMaterials[2].ambient  = XMFLOAT3(0.05f, 0.05f, 0.3f);
+        m_ObjectMaterials[2].diffuse  = XMFLOAT3(0.2f, 0.2f, 0.7f);
+        m_ObjectMaterials[2].specular = XMFLOAT3(1.0f, 1.0f, 1.0f);
+        m_ObjectMaterials[2].shininess= 32.0f;
+        // 材质3：偏黄色
+        m_ObjectMaterials[3].ambient  = XMFLOAT3(0.3f, 0.3f, 0.05f);
+        m_ObjectMaterials[3].diffuse  = XMFLOAT3(0.7f, 0.7f, 0.2f);
+        m_ObjectMaterials[3].specular = XMFLOAT3(1.0f, 1.0f, 1.0f);
+        m_ObjectMaterials[3].shininess= 32.0f;
+    }
+    // 初始化光源
+    {
+        using DirectX::XMFLOAT3;
+        // 点光源（索引0）
+        m_Lights[0].type     = 1;
+        m_Lights[0].enabled  = m_PointLightEnabled ? 1 : 0;
+        m_Lights[0].position = XMFLOAT3(0.0f, 10.0f, 0.0f);
+        m_Lights[0].range    = 30.0f;
+        m_Lights[0].direction= XMFLOAT3(0.0f, -1.0f, 0.0f);
+        m_Lights[0].spot     = DirectX::XM_PIDIV4; // unused
+        m_Lights[0].ambient  = XMFLOAT3(0.05f, 0.05f, 0.05f);
+        m_Lights[0].diffuse  = XMFLOAT3(1.0f, 1.0f, 1.0f);
+        m_Lights[0].specular = XMFLOAT3(1.0f, 1.0f, 1.0f);
+        // 聚光灯（索引1）
+        m_Lights[1].type     = 2;
+        m_Lights[1].enabled  = m_SpotLightEnabled ? 1 : 0;
+        m_Lights[1].position = m_CameraPos; // 将在绘制时更新
+        m_Lights[1].direction= XMFLOAT3(0.0f, 0.0f, 1.0f);
+        m_Lights[1].range    = 80.0f;
+        m_Lights[1].spot     = DirectX::XMConvertToRadians(30.0f); // 30度
+        m_Lights[1].ambient  = XMFLOAT3(0.0f, 0.0f, 0.0f);
+        m_Lights[1].diffuse  = XMFLOAT3(1.0f, 1.0f, 1.0f);
+        m_Lights[1].specular = XMFLOAT3(1.0f, 1.0f, 1.0f);
+        // 方向光（索引2）
+        m_Lights[2].type     = 0;
+        m_Lights[2].enabled  = m_DirLightEnabled ? 1 : 0;
+        // 随机化方向以避免每次都一致
+        {
+            float rx = static_cast<float>(rand()) / RAND_MAX * 2.0f - 1.0f;
+            float ry = static_cast<float>(rand()) / RAND_MAX * 2.0f - 1.0f;
+            float rz = static_cast<float>(rand()) / RAND_MAX * 2.0f - 1.0f;
+            DirectX::XMVECTOR dir = DirectX::XMVector3Normalize(DirectX::XMVectorSet(rx, ry, rz, 0.0f));
+            DirectX::XMStoreFloat3(&m_Lights[2].direction, dir);
+        }
+        m_Lights[2].position = XMFLOAT3(0.0f, 0.0f, 0.0f);
+        m_Lights[2].range    = 0.0f;
+        m_Lights[2].spot     = 0.0f;
+        m_Lights[2].ambient  = XMFLOAT3(0.1f, 0.1f, 0.1f);
+        m_Lights[2].diffuse  = XMFLOAT3(1.0f, 1.0f, 1.0f);
+        m_Lights[2].specular = XMFLOAT3(1.0f, 1.0f, 1.0f);
+    }
+
     return true;
 }
+
+//
 
 void GameApp::UpdateCameraForCube()
 {

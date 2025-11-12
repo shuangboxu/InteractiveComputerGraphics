@@ -5,7 +5,7 @@
 class NameVertices
 {
 public:
-    // ==== 许双博改的：增加 id，选择要加载的汉字 ====
+    // ==== 增加 id，选择要加载的汉字 ====
     NameVertices(D3D11_PRIMITIVE_TOPOLOGY type, int id);
     ~NameVertices();
 
